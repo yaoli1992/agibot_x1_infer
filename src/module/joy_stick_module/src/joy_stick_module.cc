@@ -152,10 +152,10 @@ void JoyStickModule::MainLoop() {
         array_t state = limiter_->update(target_pos);
         idx = 0;
         if (twist_pub.axis.find("linear-x") != twist_pub.axis.end()) {
-          vel_msgs.linear.x = state[idx++];
+          vel_msgs.linear.x = state[idx++]*0.6;
         }
         if (twist_pub.axis.find("linear-y") != twist_pub.axis.end()) {
-          vel_msgs.linear.y = state[idx++]; 
+          vel_msgs.linear.y = state[idx++]*0.3; 
         }
         if (twist_pub.axis.find("linear-z") != twist_pub.axis.end()) {
           vel_msgs.linear.z = state[idx++];
@@ -167,7 +167,7 @@ void JoyStickModule::MainLoop() {
           vel_msgs.angular.y = state[idx++];
         }
         if (twist_pub.axis.find("angular-z") != twist_pub.axis.end()) {
-          vel_msgs.angular.z = state[idx++];
+          vel_msgs.angular.z = state[idx++]*0.3;
         }
         aimrt::channel::Publish<geometry_msgs::msg::Twist>(twist_pub.pub_limiter, vel_msgs);
       }
