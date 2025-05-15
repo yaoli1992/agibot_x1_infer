@@ -71,6 +71,12 @@ void RLController::Init(const YAML::Node& cfg_node) {
 
 void RLController::RestartController() {
   is_first_frame_ = true;
+  joy_data_.linear.x = 0.0;
+  joy_data_.linear.y = 0.0;
+  joy_data_.linear.z = 0.0;
+  joy_data_.angular.x = 0.0;
+  joy_data_.angular.y = 0.0;
+  joy_data_.angular.z = 0.0;
 }
 
 void RLController::Update() {
