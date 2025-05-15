@@ -2,7 +2,7 @@
 // All rights reserved.
 #pragma once
 #include <future>
-
+#include <set>
 #include "aimrt_module_cpp_interface/module_base.h"
 #include "joy_stick_module/joy.h"
 #include "joy_stick_module/joy_vel_limiter.h"
@@ -54,6 +54,7 @@ class JoyStickModule : public aimrt::ModuleBase {
 
   aimrt::executor::ExecutorRef executor_;
   std::vector<FloatPub> float_pubs_;
+  // std::unordered_map<std::string, FloatPub> float_pubs_;
   std::vector<TwistPub> twist_pubs_;
   std::vector<ServiceClient> srv_clients_;
   std::shared_ptr<JoyVelLimiter> limiter_ = nullptr;

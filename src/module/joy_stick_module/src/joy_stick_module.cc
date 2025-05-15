@@ -37,6 +37,7 @@ bool JoyStickModule::Initialize(aimrt::CoreRef core) {
           publisher.pub = core_.GetChannelHandle().GetPublisher(publisher.topic_name);
           aimrt::channel::RegisterPublishType<std_msgs::msg::Float32>(publisher.pub);
           float_pubs_.push_back(std::move(publisher));
+          // float_pubs_.emplace(publisher.topic_name, std::move(publisher));
         }
       }
       if (cfg_node["twist_pubs"]) {
@@ -104,6 +105,8 @@ void JoyStickModule::MainLoop() {
     joy_->GetJoyData(joy_data);
 
     for (auto float_pub : float_pubs_) {
+    // for (const auto& pair : float_pubs_) {
+    //   const auto& float_pub = pair.second;
       bool ret = true;
       for (auto button : float_pub.buttons) {
         ret &= joy_data.buttons[button];
@@ -169,6 +172,34 @@ void JoyStickModule::MainLoop() {
         if (twist_pub.axis.find("angular-z") != twist_pub.axis.end()) {
           vel_msgs.angular.z = state[idx++]*0.3;
         }
+        aimrt::channel::Publish<geometry_msgs::msg::Twist>(twist_pub.pub_limiter, vel_msgs);
+      }
+      else{
+        array_t target_pos;
+        target_pos.resize(joy_data.axis.size());
+        target_pos.setConstant(0.0);
+
+        array_t state = limiter_->update(target_pos);
+        int32_t idx = 0;
+        if (twist_pub.axis.find("linear-x") != twist_pub.axis.end()) {
+          vel_msgs.linear.x = state[idx++]*0.6;
+        }
+        if (twist_pub.axis.find("linear-y") != twist_pub.axis.end()) {
+          vel_msgs.linear.y = state[idx++]*0.3; 
+        }
+        if (twist_pub.axis.find("linear-z") != twist_pub.axis.end()) {
+          vel_msgs.linear.z = state[idx++];
+        }
+        if (twist_pub.axis.find("angular-x") != twist_pub.axis.end()) {
+          vel_msgs.angular.x = state[idx++];
+        }
+        if (twist_pub.axis.find("angular-y") != twist_pub.axis.end()) {
+          vel_msgs.angular.y = state[idx++];
+        }
+        if (twist_pub.axis.find("angular-z") != twist_pub.axis.end()) {
+          vel_msgs.angular.z = state[idx++]*0.3;
+        }
+
         aimrt::channel::Publish<geometry_msgs::msg::Twist>(twist_pub.pub_limiter, vel_msgs);
       }
     }
