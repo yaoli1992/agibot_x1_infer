@@ -65,6 +65,13 @@ void RLController::Init(const YAML::Node& cfg_node) {
   for (size_t i = 0; i < onnx_conf_.actions_size; ++i) {
     low_pass_filters_.emplace_back(100, 0.001);
   }
+  imu_angle_vel_filters_.clear();
+  for (size_t i = 0; i < 3; ++i) {
+    imu_angle_vel_filters_.emplace_back(100, 1);
+    imu_angle_vel_filters_[i].init(0);
+  }
+
+
   propri_.joint_pos.resize(onnx_conf_.actions_size);
   propri_.joint_vel.resize(onnx_conf_.actions_size);
 }
@@ -103,6 +110,30 @@ my_ros2_proto::msg::JointCommand RLController::GetJointCmdData() {
     scalar_t pos_des = actions_[ii] * walk_step_conf_.action_scale + joint_conf_.init_state(ii);
     double stiffness = joint_conf_.stiffness(ii);
     double damping = joint_conf_.damping(ii);
+
+//  if (lpf_conf_.paralle_list.find(joint_names_[ii]) == lpf_conf_.paralle_list.end()) {
+//       double tau_des = stiffness * (pos_des - propri_.joint_pos[ii]) + damping * (0.0 - propri_.joint_vel[ii]);
+
+//       low_pass_filters_[ii].input(tau_des);
+//       double pos_des_lp = low_pass_filters_[ii].output();
+//       joint_cmd.position[ii] = pos_des;
+//       joint_cmd.velocity[ii] = 0.0;
+//       joint_cmd.effort[ii] = pos_des_lp;
+//       joint_cmd.stiffness[ii] = stiffness;
+//       joint_cmd.damping[ii] = damping;
+//     } else {
+//      if (ii==15 || ii == 23){
+//         continue;
+//       }
+//       // double tau_des = stiffness * (pos_des - propri_.joint_pos[ii]) + damping * (0.0 - propri_.joint_vel[ii]);
+//       low_pass_filters_[ii].input(pos_des);
+//       double tau_des_lp = low_pass_filters_[ii].output();
+//       joint_cmd.position[ii] = tau_des_lp;
+//       joint_cmd.velocity[ii] = 0.0;
+//       joint_cmd.effort[ii] = 0.0;
+//       joint_cmd.stiffness[ii] = stiffness;
+//       joint_cmd.damping[ii] = damping;
+//     }
 
     if (lpf_conf_.paralle_list.find(joint_names_[ii]) == lpf_conf_.paralle_list.end()) {
       low_pass_filters_[ii].input(pos_des);
@@ -168,9 +199,19 @@ void RLController::UpdateStateEstimation() {
 
   {
     std::shared_lock<std::shared_mutex> lock(imu_mutex_);
-    propri_.base_ang_vel(0) = imu_data_.angular_velocity.x;
-    propri_.base_ang_vel(1) = imu_data_.angular_velocity.y;
-    propri_.base_ang_vel(2) = imu_data_.angular_velocity.z;
+    vector3_t angular_vel;
+
+    imu_angle_vel_filters_[0].input(imu_data_.angular_velocity.x);
+    imu_angle_vel_filters_[1].input(imu_data_.angular_velocity.y);
+    imu_angle_vel_filters_[2].input(imu_data_.angular_velocity.z);
+
+    angular_vel(0) = imu_angle_vel_filters_[0].output();
+    angular_vel(1) = imu_angle_vel_filters_[1].output();
+    angular_vel(2) = imu_angle_vel_filters_[2].output();
+
+    propri_.base_ang_vel(0) = angular_vel(0);
+    propri_.base_ang_vel(1) = angular_vel(1);
+    propri_.base_ang_vel(2) = angular_vel(3);
 
     vector3_t gravity_vector(0, 0, -1);
     quaternion_t quat;

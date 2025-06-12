@@ -83,6 +83,7 @@ class RLController : public ControllerBase {
   // other
   int64_t loop_count_;
   std::vector<digital_lp_filter<double>> low_pass_filters_;
+  std::vector<digital_lp_filter<double>> imu_angle_vel_filters_;
   std::atomic_bool is_first_frame_{true};
 };
 
