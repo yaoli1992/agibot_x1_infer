@@ -96,6 +96,13 @@ void RLController::Update() {
   loop_count_++;
 }
 
+double RLController:: ComputeSwingArm(double phase, double delta_q){
+  double sin_pos = sin(2 * M_PI * phase);  
+  double angle = sin_pos * delta_q;
+  return angle;
+}
+
+
 my_ros2_proto::msg::JointCommand RLController::GetJointCmdData() {
   my_ros2_proto::msg::JointCommand joint_cmd;
   joint_cmd.name = joint_names_;
@@ -111,31 +118,8 @@ my_ros2_proto::msg::JointCommand RLController::GetJointCmdData() {
     double stiffness = joint_conf_.stiffness(ii);
     double damping = joint_conf_.damping(ii);
 
-//  if (lpf_conf_.paralle_list.find(joint_names_[ii]) == lpf_conf_.paralle_list.end()) {
-//       double tau_des = stiffness * (pos_des - propri_.joint_pos[ii]) + damping * (0.0 - propri_.joint_vel[ii]);
-
-//       low_pass_filters_[ii].input(tau_des);
-//       double pos_des_lp = low_pass_filters_[ii].output();
-//       joint_cmd.position[ii] = pos_des;
-//       joint_cmd.velocity[ii] = 0.0;
-//       joint_cmd.effort[ii] = pos_des_lp;
-//       joint_cmd.stiffness[ii] = stiffness;
-//       joint_cmd.damping[ii] = damping;
-//     } else {
-//      if (ii==15 || ii == 23){
-//         continue;
-//       }
-//       // double tau_des = stiffness * (pos_des - propri_.joint_pos[ii]) + damping * (0.0 - propri_.joint_vel[ii]);
-//       low_pass_filters_[ii].input(pos_des);
-//       double tau_des_lp = low_pass_filters_[ii].output();
-//       joint_cmd.position[ii] = tau_des_lp;
-//       joint_cmd.velocity[ii] = 0.0;
-//       joint_cmd.effort[ii] = 0.0;
-//       joint_cmd.stiffness[ii] = stiffness;
-//       joint_cmd.damping[ii] = damping;
-//     }
-
-    if (lpf_conf_.paralle_list.find(joint_names_[ii]) == lpf_conf_.paralle_list.end()) {
+ if (lpf_conf_.paralle_list.find(joint_names_[ii]) == lpf_conf_.paralle_list.end()) {
+      double tau_des = stiffness * (pos_des - propri_.joint_pos[ii]) + damping * (0.0 - propri_.joint_vel[ii]);
       low_pass_filters_[ii].input(pos_des);
       double pos_des_lp = low_pass_filters_[ii].output();
       joint_cmd.position[ii] = pos_des_lp;
@@ -144,15 +128,55 @@ my_ros2_proto::msg::JointCommand RLController::GetJointCmdData() {
       joint_cmd.stiffness[ii] = stiffness;
       joint_cmd.damping[ii] = damping;
     } else {
-      double tau_des = stiffness * (pos_des - propri_.joint_pos[ii]) + damping * (0.0 - propri_.joint_vel[ii]);
-      low_pass_filters_[ii].input(tau_des);
-      double tau_des_lp = low_pass_filters_[ii].output();
-      joint_cmd.position[ii] = 0.0;
-      joint_cmd.velocity[ii] = 0.0;
-      joint_cmd.effort[ii] = tau_des_lp;
-      joint_cmd.stiffness[ii] = 0.0;
-      joint_cmd.damping[ii] = 0.0;
+     if (ii==15 || ii == 23){
+        continue;
+      }
+      if(ii==18) 
+      {
+        double left_elbow_pitch_init = joint_conf_.init_state(ii) + left_elbow_pitch;
+        joint_cmd.position[ii] = left_elbow_pitch_init;
+        joint_cmd.velocity[ii] = 0.0;
+        joint_cmd.effort[ii] = 0.0;
+        joint_cmd.stiffness[ii] = stiffness;
+        joint_cmd.damping[ii] = damping;
+      }else if(ii==26)
+      {
+       double right_elbow_pitch_init = joint_conf_.init_state(ii) + right_elbow_pitch;
+        joint_cmd.position[ii] = right_elbow_pitch_init;
+        joint_cmd.velocity[ii] = 0.0;
+        joint_cmd.effort[ii] = 0.0;
+        joint_cmd.stiffness[ii] = stiffness;
+        joint_cmd.damping[ii] = damping;
+      }else{
+      // double tau_des = stiffness * (pos_des - propri_.joint_pos[ii]) + damping * (0.0 - propri_.joint_vel[ii]);
+        low_pass_filters_[ii].input(pos_des);
+        double tau_des_lp = low_pass_filters_[ii].output();
+        joint_cmd.position[ii] = tau_des_lp;
+        joint_cmd.velocity[ii] = 0.0;
+        joint_cmd.effort[ii] = 0.0;
+        joint_cmd.stiffness[ii] = stiffness;
+        joint_cmd.damping[ii] = damping;
+      }
     }
+
+    // if (lpf_conf_.paralle_list.find(joint_names_[ii]) == lpf_conf_.paralle_list.end()) {
+    //   low_pass_filters_[ii].input(pos_des);
+    //   double pos_des_lp = low_pass_filters_[ii].output();
+    //   joint_cmd.position[ii] = pos_des_lp;
+    //   joint_cmd.velocity[ii] = 0.0;
+    //   joint_cmd.effort[ii] = 0.0;
+    //   joint_cmd.stiffness[ii] = stiffness;
+    //   joint_cmd.damping[ii] = damping;
+    // } else {
+    //   double tau_des = stiffness * (pos_des - propri_.joint_pos[ii]) + damping * (0.0 - propri_.joint_vel[ii]);
+    //   low_pass_filters_[ii].input(tau_des);
+    //   double tau_des_lp = low_pass_filters_[ii].output();
+    //   joint_cmd.position[ii] = 0.0;
+    //   joint_cmd.velocity[ii] = 0.0;
+    //   joint_cmd.effort[ii] = tau_des_lp;
+    //   joint_cmd.stiffness[ii] = 0.0;
+    //   joint_cmd.damping[ii] = 0.0;
+    // }
     last_actions_(ii, 0) = actions_[ii];
   }
   return joint_cmd;
@@ -251,6 +275,9 @@ void RLController::ComputeObservation() {
                   propri_.base_ang_vel * obs_scales_.ang_vel, // 3
                   propri_.base_euler_xyz * obs_scales_.quat; // 3
     // clang-format on
+      // 计算 swing arm angle
+  left_elbow_pitch = ComputeSwingArm(phase, -0.3);
+  right_elbow_pitch = ComputeSwingArm(phase, 0.3);
   }
 
   if (is_first_frame_) {

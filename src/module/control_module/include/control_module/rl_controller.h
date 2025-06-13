@@ -25,6 +25,7 @@ class RLController : public ControllerBase {
   void UpdateStateEstimation();
   void ComputeObservation();
   void ComputeActions();
+  double ComputeSwingArm(double phase, double delta_q);
 
  private:
   struct WalkStepConf {
@@ -85,6 +86,9 @@ class RLController : public ControllerBase {
   std::vector<digital_lp_filter<double>> low_pass_filters_;
   std::vector<digital_lp_filter<double>> imu_angle_vel_filters_;
   std::atomic_bool is_first_frame_{true};
+
+  double left_elbow_pitch = 0.0;
+  double right_elbow_pitch = 0.0;
 };
 
 }  // namespace xyber_x1_infer::rl_control_module
